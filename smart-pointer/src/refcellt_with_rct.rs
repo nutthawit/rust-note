@@ -24,16 +24,18 @@ mod tests {
 
         *value.borrow_mut() += 10;
 
-        if let Cons(b_value, b_tail) = &b {
+        if let Cons(b_value, b_tail) = b {
             assert_eq!(*b_value.borrow(), 3);
-            if let Cons(a_value, _) = &**b_tail {
+            let a = &*b_tail;
+            if let Cons(a_value, _) = a {
                 assert_eq!(*a_value.borrow(), 15);
             }
         }
 
-        if let Cons(c_value, c_tail) = &c {
+        if let Cons(c_value, c_tail) = c {
             assert_eq!(*c_value.borrow(), 4);
-            if let Cons(a_value, _) = &**c_tail {
+            let a = &*c_tail;
+            if let Cons(a_value, _) = a {
                 assert_eq!(*a_value.borrow(), 15);
             }
         }
