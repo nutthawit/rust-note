@@ -1,3 +1,74 @@
+**Owned vs Unowned**
+
+Owned values are data that a variable directly owns, meaning the variable is solely responsible for managing that data's memory.
+
+Unowned values, in this context, refer to references (borrowed data) that provide temporary access to owned data without transferring ownership. 
+
+> [Readmore]("https://www.integralist.co.uk/posts/rust-ownership/")
+
+---
+
+**static lifetime bound in function parameters**
+
+It means the type does not contain any non-static references. Eg. the receiver can hold on to the type for as long as they want and it will never become invalid until they drop it. (*they and receiver means to function*)
+
+It's important to understand this means that any owned data always passes a 'static lifetime bound, but a reference to that owned data generally does not.
+[Readmore]("https://doc.rust-lang.org/rust-by-example/scope/lifetime/static_lifetime.html#trait-bound")
+
+```rust
+use std::fmt::Debug;
+
+fn print_it( input: impl Debug + 'static ) {
+    println!( "'static value passed in is: {:?}", input );
+}
+
+fn main() {
+    // i is owned and contains no references, thus it's 'static:
+    let i = 5;
+    print_it(i);
+
+    // oops, &i only has the lifetime defined by the scope of
+    // main(), so it's not 'static:
+    print_it(&i);
+}
+```
+
+The compiler will tell you:
+
+```bash
+error[E0597]: `i` does not live long enough
+  --> src/lib.rs:15:15
+   |
+15 |     print_it(&i);
+   |     ---------^^--
+   |     |         |
+   |     |         borrowed value does not live long enough
+   |     argument requires that `i` is borrowed for `'static`
+16 | }
+   | - `i` dropped here while still borrowed
+```
+
+---
+
+**static lifetime bound on return type on closure**
+
+what is `impl Fn(crate::surface::Action) -> Message + 'static`
+
+```rust
+pub fn applet_tooltip<'a, Message: 'static>(
+        &self,
+        content: impl Into<Element<'a, Message>>,
+        tooltip: impl Into<Cow<'static, str>>,
+        has_popup: bool,
+        on_surface_action: impl Fn(crate::surface::Action) -> Message + 'static,
+        parent_id: Option<window::Id>,
+    )
+```
+
+`+ 'static`: The static lifetime bound on return type. It means the closure must not borrow any data from the local function's scope. All captured data must either be owned by the closure itself or have a 'static lifetime (meaning it lives for the entire duration of the program). This is a strong constraint that ensures the closure can be safely stored and used later without causing dangling pointers.
+
+---
+
 `Box<T>` allow you to store data on the heap rather than the stack.
 
 What remains on the stack is the pointer to the heap.
