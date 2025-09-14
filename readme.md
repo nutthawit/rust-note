@@ -2,7 +2,7 @@
 
 Owned values are data that a variable directly owns, meaning the variable is solely responsible for managing that data's memory.
 
-Unowned values, in this context, refer to references (borrowed data) that provide temporary access to owned data without transferring ownership. 
+Unowned values, in this context, refer to references (borrowed data) that provide temporary access to owned data without transferring ownership.
 
 > [Readmore]("https://www.integralist.co.uk/posts/rust-ownership/")
 
@@ -94,7 +94,7 @@ data races.
 
 ---
 
-With `RefCell<T>`, borrowing rules are enforced at runtime. 
+With `RefCell<T>`, borrowing rules are enforced at runtime.
 
 `Rc<T>`, `RefCell<T>` is only for use in single-threaded.
 
@@ -140,7 +140,7 @@ Man --> | --> A1 -   --> A2   --> A3 --> A4         | Task A
 
 *feature* is a value that may not be ready now but will become ready at some point in future, In Rust feature are type that implement the `Feature` trait, Each future hold its own information about the progress that has been made and what "ready" means.
 
-> The futures crate is an official home for Rust experimentation for async code, and it’s actually where the Future trait was originally designed. 
+> The futures crate is an official home for Rust experimentation for async code, and it’s actually where the Future trait was originally designed.
 
 **futures in Rust are lazy: they don’t do anything until you ask them to with the `await` keyword.**
 
@@ -297,7 +297,7 @@ loop {
         Pending => {
             // continue
         }
-    }   
+    }
 }
 ```
 
@@ -309,15 +309,49 @@ Look back at [example code](concurrency/src/bin/12-message-passing-between-futur
 
 ### Pin and Unpin trait
 
-ส่วนนี้จะอธิบายว่าเทรต Pin และ Unpin ถูกนำมาใช้ในภาษา Rust อย่างไร โดยเฉพาะอย่างยิ่งในบริบทของการเขียนโปรแกรมแบบอะซิงโครนัส (asynchronous) และเทรต Future บทความนี้อธิบายว่า Future จำเป็นต้องใช้ตัวชี้แบบ Pin-wrapped (ตัวชี้ที่ถูกห่อหุ้มด้วย Pin) เพื่อให้สามารถถูก "poll" ได้ Pin ถูกอธิบายว่าเป็น wrapper (ตัวห่อหุ้ม) สำหรับชนิดข้อมูลที่คล้ายกับตัวชี้ ซึ่งบังคับใช้ข้อจำกัดในการใช้งานตัวชี้ แต่ตัวมันเองไม่ใช่ตัวชี้
+`Pin` is a wrapper for pointer-like types such as `&`, `&mut`, `Box`, `Rc` (Technically, `Pin` works with type that implement the `Deref` or `DerefMut` trait, this is effectvely equivalet to working only with pointers.)
+
+**How it's work**
+
+a series of await points in a future get compiled into a state machine. To make that work, Rust looks at what data is needed between one await point and either the next await point or the end of the async block. Then creates a corresponding variant in the compiled state machine. Each variant gets the asscess it needs to the data that will be used in that section of source code, whether by taking ownership or by a mutable or immutable reference to it.
+
+```rust
+enum PageTitleFuture<'a> {
+    Initial { url: &'a str },
+    GetAwaitPoint { url: &'a str },
+    TextAwaitPoint { response: trpl::Response },
+}
+```
+
+When we move a future *into a collection* for use with [`join_all`](concurrency/src/bin/12-message-passing-between-futures.rs) or *by return it from a function* **that actually means moveing the state machine**. Because the *futures* that Rust creates for *async block* can end up with references to themselves in the fields of any given variant.
+
+![A self-referential data type](https://doc.rust-lang.org/book/img/trpl17-04.svg)
+
+Any object that has a reference to itself is unsafe to move, because references always point to the actual memory address of whatever they refer to. If you move, those internal references will be elft pointing to the old localtion.
+
+![The unsafe result of moving a self-referential data type](https://doc.rust-lang.org/book/img/trpl17-05.svg)
+
+When we *pin* a value by wrapping a pointer to that value in `Pin`, **it can no longer move.**
+
+If you have `Pin<Box<SomeType>>`, you **actually pin the `SomeType`, not the `Box` pointer**.
+
+![Pinning a `Box` that points to a self-referential future type](https://doc.rust-lang.org/book/img/trpl17-06.svg)
+
+The `Box` can still move around freely. If a pointer move around, *but the data it points to is in the same place* there's no problem.
+
+![Moving a `Box` which points to a self-referential future type](https://doc.rust-lang.org/book/img/trpl17-07.svg)
+
+*สรุปอีกครั้งเป็นภาษาไทย*
+
+ส่วนนี้จะอธิบายว่า trait `Pin` และ `Unpin` ถูกนำมาใช้ในภาษา Rust อย่างไร โดยเฉพาะอย่างยิ่งในบริบทของการเขียนโปรแกรมแบบอะซิงโครนัส (asynchronous) และtrait `Future` บทความนี้อธิบายว่า Future จำเป็นต้องใช้ตัวชี้แบบ Pin-wrapped (ตัวชี้ที่ถูกห่อหุ้มด้วย Pin) เพื่อให้สามารถถูก "poll" ได้ Pin ถูกอธิบายว่าเป็น wrapper (ตัวห่อหุ้ม) สำหรับชนิดข้อมูลที่คล้ายกับตัวชี้ ซึ่งบังคับใช้ข้อจำกัดในการใช้งานตัวชี้ แต่ตัวมันเองไม่ใช่ตัวชี้
 
 บทความยังอธิบายว่า await จะทำการ pin future โดยอัตโนมัติ (implicitly pins) แต่เมื่อมีการย้าย futures ไปยัง collection เช่น Vec เพื่อส่งไปยังฟังก์ชันอย่าง join_all นั้น futures จะต้องถูก pin อย่างชัดเจน (explicitly pinned) เหตุผลก็คือบล็อก async สามารถสร้างชนิดข้อมูลที่มีการอ้างอิงถึงตัวเองได้ (self-referential types) และการย้ายพวกมันอาจไม่ปลอดภัย Unpin ถูกแนะนำให้เป็นเทรตชนิด marker (เครื่องหมาย) ที่บอกคอมไพเลอร์ว่าชนิดข้อมูลนั้นปลอดภัยที่จะย้ายได้ ชนิดข้อมูลส่วนใหญ่ใน Rust จะใช้ Unpin โดยอัตโนมัติ แต่ futures ที่มีการอ้างอิงถึงตัวเองจะไม่ได้ใช้ ส่วนสุดท้ายของบทความสรุปว่า Pin และ Unpin มีความสำคัญส่วนใหญ่สำหรับการสร้างไลบรารีหรือรันไทม์ระดับล่าง และการทำความเข้าใจเทรตเหล่านี้จะช่วยในการแก้ไขข้อความแสดงข้อผิดพลาดที่เกี่ยวข้องกับการ pinning ได้
 
-##### โครงสร้างข้อมูลแบบ Self-Referential และเหตุผลที่ไม่ควรย้ายมัน
+**โครงสร้างข้อมูลแบบ Self-Referential และเหตุผลที่ไม่ควรย้ายมัน**
 
 ข้อมูลแบบ self-referential (การอ้างอิงถึงตัวเอง) คือโครงสร้างข้อมูลที่เก็บตัวชี้ (pointer) หรือการอ้างอิง (reference) ไปยังตัวมันเองหรือไปยังส่วนอื่น ๆ ภายในตัวมัน ตัวอย่างที่ง่ายที่สุดคือโหนดของลิงก์ลิสต์ (linked list) ที่มีตัวชี้ไปยังโหนดถัดไป ซึ่งอาจมีตัวชี้ย้อนกลับไปที่โหนดก่อนหน้าได้ด้วย ตัวอย่างที่เกี่ยวข้องในบริบทของ async ในภาษา Rust คือ Future ที่ต้องจัดเก็บอ็อบเจกต์ชั่วคราวซึ่งถือการอ้างอิงไปยังข้อมูลภายในตัว Future นั้นเอง
 
-##### ทำไมการย้ายถึงไม่ปลอดภัย
+**ทำไมการย้ายถึงไม่ปลอดภัย**
 
 การย้ายโครงสร้างข้อมูลที่มีการอ้างอิงถึงตัวเองในหน่วยความจำสามารถนำไปสู่ปัญหา dangling pointers (ตัวชี้ที่ชี้ไปยังตำแหน่งหน่วยความจำที่ถูกปลดไปแล้ว) หรือ invalid references (การอ้างอิงที่ไม่ถูกต้อง) ซึ่งถือเป็นเรื่องไม่ปลอดภัยและอาจทำให้เกิดพฤติกรรมที่ไม่คาดคิดได้ เมื่อตัวแปรถูกย้าย ข้อมูลของมันจะถูกคัดลอกไปยังตำแหน่งใหม่ในหน่วยความจำ และหน่วยความจำเดิมจะถูกปลดปล่อย ปัญหาหลักของข้อมูลแบบ self-referential คือตัวชี้ภายในโครงสร้างยังคงชี้ไปยังตำแหน่งหน่วยความจำ เดิม ไม่ใช่ตำแหน่งใหม่
 
