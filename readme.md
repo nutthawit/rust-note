@@ -108,7 +108,31 @@ With `RefCell<T>`, we use the *borrow* and *borrow_mut* methods, which are part 
 
 The `RefCell<T>` keeps track of how many `Ref<T>` and `RefMut<T>` smart pointers are currently active. Every time we call *borrow*, the `RefCell<T>` increases its count of how many immutable borrows are active. When a `Ref<T>` value goes out of scope, the count of immutable borrows goes down by 1. Just like the compile-time borrowing rules, **`RefCell<T>` lets us have many immutable borrows or one mutable borrow at any point in time.**
 
----
+## Concurrency (Thread and Asynchronous)
+
+The Rust standard library uses a 1:1 model of thread implementation, whereby a program uses one operating system thread per one language thread.
+
+When the main thread of a Rust program completes, all spawned threads are shut down, whether or not they have finished running.
+
+[Create a new thread with `thread::spawn`](concurrency/src/bin/01-spawned-thread.rs)
+
+Rust will force the `move` keyword with closures passed to `thread::spawn` because the closure will then take ownership of the values it uses from the environment, thus transferring ownership of those values from one thread to another. [see code](concurrency/src/bin/02-spawned-thread-closure-capture.rs)
+
+### Channel
+
+A *channel* is a general programming concept by which data is sent from one thread to another.
+
+Imagine a channel being like a directional channel of water, such as a stream or a river. If you put something like a rubber duck into a river, it will travel downstream to the end of the waterway.
+
+A channel has two halves: a transmitter and a receiver. The transmitter half is the upstream location where you put the rubber duck into the river, and the receiver half is where the rubber duck ends up downstream.
+
+A chennel is said to be *closed* if either the *transmitter or receiver half is dropped.
+
+[Basic transmitter and receiver](concurrency/src/bin/03-transmitter-receiver.rs)
+
+[Multiple messages](concurrency/src/bin/04-send-multiple-values.rs)
+
+[Multiple transmitters](concurrency/src/bin/05-multiple-transmitters.rs)
 
 The `Sync` trait indicates that it is safe to be referenced from multiple threads.
 
@@ -118,13 +142,11 @@ Almost all primitive types are `Send`.
 
 All primitive types implement `Sync`.
 
-Any types composed entirely of `Send` is automatically marked as `Send`.
+Any types composed (the collection that containes item that implement `Send`) entirely of `Send` is automatically marked as `Send`.
 
-Any types composed entirely of `Sync` is also implement `Sync`.
+Any types composed (the collection that containes item that implement `Sync`) entirely of `Sync` is also implement `Sync`.
 
 ***<span style="color:red">Manullay implementing these traits is unsafe</span>***
-
-## Concurrency (Thread and Asynchronous)
 
 ***asynchronous programming*** is where operations may not finish sequentially in the order they were started.
 
@@ -363,8 +385,12 @@ The `Box` can still move around freely. If a pointer move around, *but the data 
 
 ในทำนองเดียวกัน เมื่อโครงสร้างข้อมูลแบบ self-referential ถูกย้าย ตัวชี้ภายในของมันจะกลายเป็นไม่ถูกต้อง เพราะพวกมันยังคงชี้ไปยังที่อยู่หน่วยความจำเก่าซึ่งไม่ถูกต้องอีกต่อไป นี่คือเหตุผลที่คอมไพเลอร์ของ Rust ป้องกันไม่ให้ Future ที่มีการอ้างอิงถึงตัวเองถูกย้าย เว้นแต่จะถูก pin ซึ่งเป็นกระบวนการที่รับประกันว่าที่อยู่หน่วยความจำของมันจะไม่เปลี่ยนแปลง
 
----
+*Chapter summary*
 
 A task is similar to a thread, but instead of being managed by the operating system, it’s managed by library-level code: the runtime.
+
+Threads act as a boundary for sets of synchronous operations; concurrency is possible *between* threads.
+
+Tasks act as a boundary of sets of asynchronous operations; concurrency is possible both *between* and *within* tasks.
 
 

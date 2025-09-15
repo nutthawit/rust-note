@@ -1,27 +1,11 @@
-use std::sync::{Arc, Mutex};
 use std::thread;
 
 fn main() {
-    let counter = Arc::new(Mutex::new(0));
-    let mut handles = vec![];
+    let v = 3;
 
-    for _ in 0..10 {
-        let counter = Arc::clone(&counter);
-        let handle = thread::spawn(move || {
-            let mut num = counter.lock().unwrap();
-            *num += 1;
-        });
-        handles.push(handle);
-    }
+    let handle = thread::spawn(|| {
+        println!("Here's a vector: {v:?}");
+    });
 
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
-    println!("Result: {}", *counter.lock().unwrap());
-
-    // Similarities Between RefCell<T>/Rc<T> and Mutex<T>/Arc<T>
-    //
-    // RefCell<T> allow us to mutate contents inside an Rc<T>,
-    // we use Mutex<T> to mutate contents inside an Arc<T>.
+    handle.join().unwrap();
 }

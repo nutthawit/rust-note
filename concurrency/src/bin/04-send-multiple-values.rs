@@ -19,6 +19,9 @@ fn main() {
         }
     });
 
+    // We’re *not* calling the `recv` function explicitly anymore: instead, we’re treating `rx` as an iterator
+    //
+    // Because we don’t have any code that pauses or delays in the for loop in the main thread, we can tell that the main thread is waiting to receive values from the spawned thread.
     for received in rx {
         println!("Got: {received}");
     }
