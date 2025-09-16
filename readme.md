@@ -134,6 +134,28 @@ A chennel is said to be *closed* if either the *transmitter or receiver half is 
 
 [Multiple transmitters](concurrency/src/bin/05-multiple-transmitters.rs)
 
+### Multiple Threads access same data via `Mutex` and `Arc`
+
+Mutex is an abbreviation for mutual exclusion, as in a mutex allows only one thread to access some data at any given time.
+
+Mutexes have two rules:
+
+1. You must attempt to acquire the lock before using the data.
+
+2. When you’re done with the data that the mutex guards, you must unlock the data so other threads can acquire the lock.
+
+[Mutex in single-thread code](concurrency/src/bin/06-mutual-exclusion-single-thread.rs)
+
+`Arc<T>` is like `Rc<T>` that for use in multiple threads.
+
+[Mutex in multiple-thread code](concurrency/src/bin/07-mutual-exclusion-multiple-threads.rs)
+
+**Similarities Between RefCell<T>/Rc<T> and Mutex<T>/Arc<T>**
+
+RefCell<T> allow us to mutate contents inside an Rc<T>, we use Mutex<T> to mutate contents inside an Arc<T>.
+
+### Send and Sync traits
+
 The `Sync` trait indicates that it is safe to be referenced from multiple threads.
 
 The `Send` trait indicates that ownership can be transfered between threads.
@@ -147,6 +169,8 @@ Any types composed (the collection that containes item that implement `Send`) en
 Any types composed (the collection that containes item that implement `Sync`) entirely of `Sync` is also implement `Sync`.
 
 ***<span style="color:red">Manullay implementing these traits is unsafe</span>***
+
+### Asynchronous
 
 ***asynchronous programming*** is where operations may not finish sequentially in the order they were started.
 
@@ -168,9 +192,7 @@ Man --> | --> A1 -   --> A2   --> A3 --> A4         | Task A
 
 > Note: This is different from the behavior we saw in the thread::spawn, where the closure we passed to another thread started running immediately.
 
----
-
-[look at full code here before continue.](concurrency/src/bin/80-basic-async-program.rs)
+[The basic async code](concurrency/src/bin/80-basic-async-program.rs)
 
 When Rust sees a block marked with the `async` keyword, it compiles it into a unique, anonymous data type that implements the `Future` trait. When Rust sees a function marked with `async`, it compiles it into a non-async function whose body is an async block. An async function’s return type is the type of the anonymous data type the compiler creates for that async block.
 
@@ -199,10 +221,7 @@ Let’s walk through each part of the transformed version:
 3. All of the code called in the body of the original function is wrapped in an `async move` block. Remember that blocks are expressions. This whole block is the expression returned from the function.
 
 4. This async block produces a value with the type `Option<String>`, as just described. That value matches the `Output` type in the return type. This is just like other blocks you have seen.
-
 5. The new function body is an `async move` block because of how it uses the `url` parameter.
-
----
 
 ### What is `await`
 
